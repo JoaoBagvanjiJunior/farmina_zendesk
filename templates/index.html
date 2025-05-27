@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmina - Busca de Produtos para Pets</title>
+     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 Farmina - Produtos para Pets</h1>
+
+        <div class="country-info">
+            <strong>🌍 País padrão:</strong> MA (Marrocos) - Configuração do brand
+        </div>
+
+        <section class="filter-section">
+            <h2>🎯 Filtros do Pet</h2>
+
+            <div class="filter-group">
+                <label for="foodType">Tipo de alimento:</label>
+                <select id="foodType">
+                <option value="">Selecione...</option>
+                <option value="dry">Seco</option>
+                <option value="wet">Molhado</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="petType">Tipo de pet:</label>
+                <select id="petType">
+                <option value="">Selecione...</option>
+                <option value="dog">Cão</option>
+                <option value="cat">Gato</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Gestante:</label>
+                <div class="checkbox-group">
+                <label><input type="radio" name="gestation" value="true"> Sim</label>
+                <label><input type="radio" name="gestation" value="false" checked> Não</label>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label>Lactante:</label>
+                <div class="checkbox-group">
+                <label><input type="radio" name="lactation" value="true"> Sim</label>
+                <label><input type="radio" name="lactation" value="false" checked> Não</label>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="lifeStage">Fase da vida:</label>
+                <select id="lifeStage">
+                <option value="">Selecione...</option>
+                <option value="puppy">Filhote</option>
+                <option value="adult">Adulto</option>
+                <option value="senior">Sênior</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="specialCares">Cuidados especiais:</label>
+                <div id="specialCaresContainer" class="special-cares-container"></div>
+                <button id="loadSpecialCares" type="button">➕ Carregar Cuidados Especiais</button>
+            </div>
+
+            <div class="filter-group" style="text-align: center;">
+                <button id="searchButton">🔎 Buscar Produtos</button>
+            </div>
+
+            <div id="errorMessage" class="error-message"></div>
+        </section>
+
+        <div id="loading" class="loading">
+            <p>⏳ Carregando produtos...</p>
+        </div>
+
+        <section class="results-section">
+            <h2>📦 Resultados</h2>
+            <div id="resultsContainer"></div>
+        </section>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let specialCaresList = [];
+        
+        // Elementos do DOM
+        const foodTypeSelect = document.getElementById('foodType');
+        const petTypeSelect = document.getElementById('petType');
+        const lifeStageSelect = document.getElementById('lifeStage');
+        const specialCaresContainer = document.getElementById('specialCaresContainer');
+        const loadSpecialCaresBtn = document.getElementById('loadSpecialCares');
+        const searchButton = document.getElementById('searchButton');
+        const loadingDiv = document.getElementById('loading');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const errorMessageDiv = document.getElementById('errorMessage');
+        
+        // Event Listeners
+        loadSpecialCaresBtn.addEventListener('click', loadSpecialCares);
+        searchButton.addEventListener('click', searchProducts);
+        
+        // Carregar cuidados especiais
+        async function loadSpecialCares() {
+            const petType = petTypeSelect.value;
+            
+            if (!petType) {
+                showError('Por favor, selecione o tipo de pet (cão ou gato) antes de carregar os cuidados especiais.');
+                return;
+            }
+            
+            try {
+                loadingDiv.style.display = 'block';
+                errorMessageDiv.textContent = '';
+                
+                const response = await fetch('/api/specialcares', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        species: petType
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar cuidados especiais');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === "200") {
+                    specialCaresList = data.result[0].specialcares[0].list;
+                    renderSpecialCares();
+                } else {
+                    throw new Error(data.message || 'Erro desconhecido');
+                }
+            } catch (error) {
+                showError('Erro ao carregar cuidados especiais: ' + error.message);
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+        
+        // Renderizar cuidados especiais
+        function renderSpecialCares() {
+            specialCaresContainer.innerHTML = '';
+            
+            specialCaresList.forEach(care => {
+                const careElement = document.createElement('div');
+                careElement.className = 'special-care-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `care-${care.specialcare_id}`;
+                checkbox.value = care.specialcare_id;
+                
+                const label = document.createElement('label');
+                label.htmlFor = `care-${care.specialcare_id}`;
+                label.textContent = care.specialcare_name;
+                label.style.fontWeight = 'normal';
+                label.style.marginLeft = '5px';
+                
+                careElement.appendChild(checkbox);
+                careElement.appendChild(label);
+                specialCaresContainer.appendChild(careElement);
+            });
+        }
+        
+        // Buscar produtos
+        async function searchProducts() {
+            const foodType = foodTypeSelect.value;
+            const petType = petTypeSelect.value;
+            const gestation = document.querySelector('input[name="gestation"]:checked').value;
+            const lactation = document.querySelector('input[name="lactation"]:checked').value;
+            const lifeStage = lifeStageSelect.value;
+            
+            if (!foodType || !petType) {
+                showError('Por favor, selecione pelo menos o tipo de alimento e o tipo de pet.');
+                return;
+            }
+            
+            // Obter cuidados especiais selecionados
+            const selectedCares = [];
+            document.querySelectorAll('#specialCaresContainer input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedCares.push(checkbox.value);
+            });
+            
+            try {
+                loadingDiv.style.display = 'block';
+                resultsContainer.innerHTML = '';
+                errorMessageDiv.textContent = '';
+                
+                const payload = {
+                    productType: foodType,
+                    type: petType,
+                };
+                
+                if (lifeStage) payload.lifeStage = lifeStage;
+                if (gestation) payload.gestation = gestation;
+                if (lactation) payload.lactation = lactation;
+                if (selectedCares.length > 0) payload.specialcares = selectedCares;
+                
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao buscar produtos');
+                }
+                
+                const data = await response.json();
+                
+                if (data.status === "200") {
+                    renderProducts(data.result.products);
+                } else {
+                    throw new Error(data.message || 'Erro desconhecido');
+                }
+            } catch (error) {
+                showError('Erro ao buscar produtos: ' + error.message);
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+        
+        // Renderizar produtos
+        function renderProducts(products) {
+            resultsContainer.innerHTML = '';
+            
+            if (!products || Object.keys(products).length === 0) {
+                resultsContainer.innerHTML = '<p>Nenhum produto encontrado com os filtros selecionados.</p>';
+                return;
+            }
+            
+            Object.values(products).forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                
+                // Imagem do produto
+                const productImageDiv = document.createElement('div');
+                productImageDiv.className = 'product-image';
+                
+                const img = document.createElement('img');
+                img.src = product.img || 'https://via.placeholder.com/150';
+                img.alt = product.name;
+                
+                productImageDiv.appendChild(img);
+                
+                // Informações do produto
+                const productInfoDiv = document.createElement('div');
+                productInfoDiv.className = 'product-info';
+                
+                const nameElement = document.createElement('div');
+                nameElement.className = 'product-name';
+                nameElement.textContent = product.name;
+                
+                const lineElement = document.createElement('div');
+                lineElement.className = 'product-line';
+                lineElement.textContent = product.line;
+                
+                const descElement = document.createElement('div');
+                descElement.className = 'product-description';
+                descElement.textContent = product.description;
+                
+                // Detalhes do produto
+                const detailsElement = document.createElement('div');
+                detailsElement.className = 'product-details';
+                
+                const typeElement = document.createElement('p');
+                typeElement.innerHTML = `<span class="detail-label">Tipo:</span> ${product.productType === 'dry' ? 'Seco' : 'Molhado'}`;
+                
+                const speciesElement = document.createElement('p');
+                speciesElement.innerHTML = `<span class="detail-label">Espécie:</span> ${product.type === 'dog' ? 'Cão' : 'Gato'}`;
+                
+                const purposeElement = document.createElement('p');
+                purposeElement.innerHTML = `<span class="detail-label">Finalidade:</span> ${product.purpose === 'veterinarycare' ? 'Cuidado veterinário' : 'Manutenção'}`;
+                
+                // Formatos disponíveis
+                const formatsElement = document.createElement('p');
+                const formats = [];
+                
+                if (product.formats) {
+                    Object.values(product.formats).forEach(format => {
+                        formats.push(`${format.format}kg - ${format.price}${product.currency || '€'}`);
+                    });
+                }
+                
+                formatsElement.innerHTML = `<span class="detail-label">Formatos disponíveis:</span> ${formats.join(', ')}`;
+                
+                // Cuidados especiais
+                const caresElement = document.createElement('div');
+                if (product.specialcares && Object.keys(product.specialcares).length > 0) {
+                    const careNames = Object.values(product.specialcares).map(care => care.name);
+                    caresElement.innerHTML = `<p><span class="detail-label">Cuidados especiais:</span> ${careNames.join(', ')}</p>`;
+                }
+                
+                // Montar estrutura
+                detailsElement.appendChild(typeElement);
+                detailsElement.appendChild(speciesElement);
+                detailsElement.appendChild(purposeElement);
+                detailsElement.appendChild(formatsElement);
+                detailsElement.appendChild(caresElement);
+                
+                productInfoDiv.appendChild(nameElement);
+                productInfoDiv.appendChild(lineElement);
+                productInfoDiv.appendChild(descElement);
+                productInfoDiv.appendChild(detailsElement);
+                
+                productCard.appendChild(productImageDiv);
+                productCard.appendChild(productInfoDiv);
+                
+                resultsContainer.appendChild(productCard);
+            });
+        }
+        
+        // Mostrar mensagem de erro
+        function showError(message) {
+            errorMessageDiv.textContent = message;
+        }
+    </script>
+</body>
+</html>
