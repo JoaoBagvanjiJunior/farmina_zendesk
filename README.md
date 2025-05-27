@@ -69,7 +69,7 @@ python app.py
 A aplicação estará disponível em: http://localhost:5000
 ```
 ## Estrututra do Projecto
-
+```
 farmina-zendesk/
 ├── app.py                # Aplicação principal Flask
 ├── requirements.txt      # Dependências Python
@@ -79,7 +79,7 @@ farmina-zendesk/
 │   └── index.html        # Template HTML principal
 ├── README.md             # Este arquivo
 └── LICENSE               # Licença (opcional)
-
+```
 ## Configuração
 ```
 A aplicação está configurada para usar as credenciais padrão da API Farmina:
