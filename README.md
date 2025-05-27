@@ -113,13 +113,17 @@ lactation (opcional - true/false)
 specialcares (opcional - array de IDs)
 ```
 ## adicionais 
-``` python -m venv venv
+```
+python -m venv venv
 .\venv\Scripts\activate
+
 Instale o Flask :
 2.3.3
 pip install flask
+
  a versão do Werkzeug:
 pip install werkzeug==2.3.7
+
  run:
 python app.py
 ```
